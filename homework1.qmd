@@ -1,0 +1,26 @@
+choose an environmental justice topic and...
+- create two maps that communicate an environmental justice issue
+- write a brief paragraph explaining what your maps communicate
+
+
+*** Topic of Choice: ***
+I attended Washington University in St. Louis, in St. Louis Missouri for my undergrad eduation.  This school has a very wealthy student body located in a city that struggles with poverty, crime, and other socioeconomic issues.  The school went to great lengths to make life safe and convenient for students, which I appreciated, but this meant that the area surrounding the school felt like a wealthy and isolated bubble rather than part of the city.  I want to learn more about the issues facing the disadvantaged populations of St. Louis, so that is what I focused on for this assignment; specifically the unqeual distribution of air pollution from the city's industrial roots, which disproportionately effects low-income areas. 
+
+Manipulating the data - *** UPDATE FOR PROBLEM OF INTEREST!!! ***
+```{r}
+library(tidyverse)
+library(sf)
+library(here)
+
+# read in geodatabase of EJScreen data at the Census Block Group level
+ejscreen <- sf::st_read(here::here("eds-223-homework-1", "data", "EJSCREEN_2023_BG_StatePct_with_AS_CNMI_GU_VI.gdb")) 
+
+# filter to Missouri and Illinois, since the greater St. Louis area crosses state borders
+mo_and_so_il <- ejscreen %>%
+  dplyr::filter(ST_ABBREV %in% c("MO", "IL")) 
+
+# filter to counties making up the greater stl area
+saint_louis <- mo_and_so_il %>%
+  dplyr::filter(CNTY_NAME %in% c("St. Louis city", "St. Clair County", "Madison County", "St. Louis County"))
+
+```
