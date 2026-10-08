@@ -1,16 +1,23 @@
-choose an environmental justice topic and...
-- create two maps that communicate an environmental justice issue
-- write a brief paragraph explaining what your maps communicate
+---
+title: Air pollution impacts on disadvantaged communities in St. Louis, Missouri
+date: 10-07-2026
+author-title: Oliver Witt
+---
 
 
-*** Topic of Choice: ***
+## Topic of Choice:
 I attended Washington University in St. Louis, in St. Louis Missouri for my undergrad eduation.  This school has a very wealthy student body located in a city that struggles with poverty, crime, and other socioeconomic issues.  The school went to great lengths to make life safe and convenient for students, which I appreciated, but this meant that the area surrounding the school felt like a wealthy and isolated bubble rather than part of the city.  I want to learn more about the issues facing the disadvantaged populations of St. Louis, so that is what I focused on for this assignment; specifically the unqeual distribution of air pollution from the city's industrial roots, which disproportionately effects low-income areas. 
 
-Manipulating the data - *** UPDATE FOR PROBLEM OF INTEREST!!! ***
+The American Lung Association’s 2026 “State of the Air” report (https://www.lung.org/research/sota/city-rankings/msas/st-louis-st-charles-farmington-mo-il) ranked the St. Louis metro area as one of the worst in the country for ozone pollution as well as particle pollution.
+
+I wanted to look at whether this pollution disproportionately impacted disadvantaged populations (namely people of color, limited english speaking households, low income, unemployed, or those with less than a high school education).
+
+## Reading in the data, and selecting subset of interest***
 ```{r}
 library(tidyverse)
 library(sf)
 library(here)
+library(tmap)
 
 # read in geodatabase of EJScreen data at the Census Block Group level
 ejscreen <- sf::st_read(here::here("eds-223-homework-1", "data", "EJSCREEN_2023_BG_StatePct_with_AS_CNMI_GU_VI.gdb")) 
@@ -20,7 +27,235 @@ mo_and_so_il <- ejscreen %>%
   dplyr::filter(ST_ABBREV %in% c("MO", "IL")) 
 
 # filter to counties making up the greater stl area
+# saint_louis <- mo_and_so_il %>%
+ # dplyr::filter(CNTY_NAME %in% c("St. Louis city", "St. Clair County", #"Madison County", "St. Louis County"))
+
+
 saint_louis <- mo_and_so_il %>%
-  dplyr::filter(CNTY_NAME %in% c("St. Louis city", "St. Clair County", "Madison County", "St. Louis County"))
+  dplyr::filter(
+    (CNTY_NAME %in% c("St. Louis City") & ST_ABBREV %in% c("MO")) |
+    (CNTY_NAME %in% c("St. Clair County") & ST_ABBREV %in% c("IL")) |
+    (CNTY_NAME %in% c("Madison County") & ST_ABBREV %in% c("IL")) |
+    (CNTY_NAME %in% c("St. Louis County") & ST_ABBREV %in% c("MO"))
+  )
 
 ```
+
+
+## Make base map of area of interest.
+The greater St. Louis area includes St. Louis City and St. Louis County in Missouri, as well as St. Clair and Madison counties in Illinois:
+```{r}
+# make base map
+
+stl_shape <- st_as_sf(saint_louis)
+
+base_map <- tm_shape(stl_shape) +
+    tm_polygons()
+base_map
+```
+
+
+Looking specifically at percentile measures (>90th percentile, to aid comparison across various measures), how do these maps of air pollution compare to maps of socioeconomic disadvantage factors?
+
+```{r}
+# filter for areas where the majority of the population falls into at least one socioeconomic disadvantage determinant category
+
+dis_area <- saint_louis |> 
+    dplyr::filter(PEOPCOLORPCT > 0.5 | LOWINCPCT > 0.50 | UNEMPPCT > 0.5 | LINGISOPCT > 0.5 | LESSHSPCT > 0.5)
+
+dis_shape <- st_as_sf(dis_area)
+```
+
+## Compare disadvantaged community map to maps of air pollution factors
+Look at areas that fall into the above categories, and also are above the 90th percentile for any of the air pollution factors in the dataset (PM2.5 exposure, ozone exposure, diesel particulate matter exposure, cancer risk due to airborne particulate matter, respiratory illness risk due to airborne particulate matter, and toxic releases to air).
+```{r}
+# look at areas that fall under the above categories AND are in the 90th percentile for PM2.5 exposure
+dis_pm25 <- dis_area |> 
+  dplyr::filter(P_PM25 > 90)
+all_pm25 <- saint_louis |> 
+  dplyr::filter(P_PM25 > 90)
+
+# map it
+dis_pm25_shape <- st_as_sf(dis_pm25)
+all_pm25_shape <- st_as_sf(all_pm25)
+
+pm25_map <- tm_shape(stl_shape) +
+    tm_polygons() +
+  tm_shape(all_pm25_shape) +
+    tm_lines(col="red") +
+  tm_shape(dis_pm25_shape) +
+    tm_polygons(fill = "yellow")
+
+pm25_map
+```
+
+
+```{r}
+# look at areas that fall under the above categories AND are in the 90th percentile for ozone exposure
+dis_ozone <- dis_area |> 
+  dplyr::filter(P_OZONE > 90)
+all_ozone <- saint_louis |> 
+  dplyr::filter(P_OZONE > 90)
+
+# map it
+dis_ozone_shape <- st_as_sf(dis_ozone)
+all_ozone_shape <- st_as_sf(all_ozone)
+
+ozone_map <- tm_shape(stl_shape) +
+    tm_polygons() +
+  tm_shape(all_ozone_shape) +
+    tm_lines(col="red") +
+  tm_shape(dis_ozone_shape) +
+    tm_polygons(fill = "yellow")
+
+ozone_map
+```
+
+
+```{r}
+# look at areas that fall under the above categories AND are in the 90th percentile for diesel particulate matter exposure
+dis_diesel <- dis_area |> 
+  dplyr::filter(P_DSLPM  > 90)
+all_diesel <- saint_louis |> 
+  dplyr::filter(P_DSLPM  > 90)
+
+# map it
+dis_diesel_shape <- st_as_sf(dis_diesel)
+all_diesel_shape <- st_as_sf(all_diesel)
+
+diesel_map <- tm_shape(stl_shape) +
+    tm_polygons() +
+  tm_shape(all_diesel_shape) +
+    tm_lines(col="red") +
+  tm_shape(dis_diesel_shape) +
+    tm_polygons(fill = "yellow")
+
+diesel_map
+```
+
+```{r}
+# look at areas that fall under the above categories AND are in the 90th percentile for cancer risk due to airborne pollutant exposure
+dis_cancer <- dis_area |> 
+  dplyr::filter(P_CANCER  > 90)
+all_cancer <- saint_louis |> 
+  dplyr::filter(P_CANCER  > 90)
+
+# map it
+dis_cancer_shape <- st_as_sf(dis_cancer)
+all_cancer_shape <- st_as_sf(all_cancer)
+
+cancer_map <- tm_shape(stl_shape) +
+    tm_polygons() +
+  tm_shape(all_cancer_shape) +
+    tm_lines(col="red") +
+  tm_shape(dis_cancer_shape) +
+    tm_polygons(fill = "yellow")
+
+cancer_map
+```
+
+```{r}
+# look at areas that fall under the above categories AND are in the 90th percentile for respiratory illness risk due to airborne particulate matter exposure
+dis_resp <- dis_area |> 
+  dplyr::filter(P_RESP  > 90)
+all_resp <- saint_louis |> 
+  dplyr::filter(P_RESP  > 90)
+
+# map it
+dis_resp_shape <- st_as_sf(dis_resp)
+all_resp_shape <- st_as_sf(all_resp)
+
+resp_map <- tm_shape(stl_shape) +
+    tm_polygons() +
+  tm_shape(all_resp_shape) +
+    tm_lines(col="red") +
+  tm_shape(dis_resp_shape) +
+    tm_polygons(fill = "yellow")
+
+resp_map
+```
+
+```{r}
+# look at areas that fall under the above categories AND are in the 90th percentile for Toxic Releases to Air
+dis_rsei <- dis_area |> 
+  dplyr::filter(P_RSEI_AIR  > 90)
+all_rsei <- saint_louis |> 
+  dplyr::filter(P_RSEI_AIR  > 90)
+
+# map it
+dis_rsei_shape <- st_as_sf(dis_rsei)
+all_rsei_shape <- st_as_sf(all_rsei)
+
+rsei_map <- tm_shape(stl_shape) +
+    tm_polygons() +
+  tm_shape(all_rsei_shape) +
+    tm_lines(col="red") +
+  tm_shape(dis_rsei_shape) +
+    tm_polygons(fill = "yellow")
+
+rsei_map
+```
+
+
+## Make these maps look pretty!
+```{r}
+# the ozone map shows the strongest relationship between air pollution exposure and disadvantaged populations
+ozone_map <- tm_shape(stl_shape) +
+    tm_graticules() +
+    tm_polygons() +
+  tm_shape(all_ozone_shape) +
+    tm_lines(col="red") +
+  tm_shape(dis_ozone_shape) +
+    tm_polygons(fill = "yellow") +
+  tm_add_legend(
+    type = "lines",
+    labels = "Delineates tracts in the 90th percentile for high levels of ozone exposure",
+    col = "red"
+  ) +
+  tm_add_legend(
+    type = "fill",
+    labels = "Tracts exposed to high ozone that contain disadvantaged populations",
+    fill = "yellow"
+  ) +
+  tm_compass(position = c("top", "left")) +
+  tm_scalebar(position = c("bottom", "left")) +
+  tm_title(text = "Ozone exposure for disadvanted populations in the St. Louis metro area",  size = 5, fontface = "bold", position = c("center", "top"), frame = TRUE, frame.lwd = 1, frame.col = "red", bg = TRUE, bg.color = "white", bg.alpha = 1)
+    
+
+ozone_map
+```
+
+```{r}
+pm25_map <- tm_shape(stl_shape) +
+    tm_graticules() +
+    tm_polygons() +
+  tm_shape(all_pm25_shape) +
+    tm_lines(col="red") +
+  tm_shape(dis_pm25_shape) +
+    tm_polygons(fill = "yellow") +
+  tm_add_legend(
+    type = "lines",
+    labels = "Delineates tracts in the 90th percentile for high levels of PM2.5 exposure",
+    col = "red"
+  ) +
+  tm_add_legend(
+    type = "fill",
+    labels = "Tracts exposed to high PM2.5 that contain disadvantaged populations",
+    fill = "yellow"
+  ) +
+  tm_compass(position = c("top", "left")) +
+  tm_scalebar(position = c("bottom", "left")) +
+  tm_title(text = "PM2.5 exposure for disadvanted populations in the St. Louis metro area", size = 5, fontface = "bold", position = c("center", "top"), frame = TRUE, frame.lwd = 1, frame.col = "red", bg = TRUE, bg.color = "white", bg.alpha = 1)
+
+pm25_map
+```
+
+## Conclusions
+As shown by these two maps, air pollution in St. Louis disproportionately affects disadvantaged populations (defined here as people of color, limited english speaking households, low income, unemployed, or those with less than a high school education).  
+
+The major contributor here is PM2.5, which is defined as small inhalable airborne particles with a diameter smaller than 2.5 micrometers (EPA, https://www.epa.gov/pm-pollution/particulate-matter-pm-basics).  As shown by figure 1 (the PM2.5 map), areas with high annual PM2.5 levels ("high" here is defined as above the 90th percentile nationwide) almost completely overlap with areas matching at least one of the previously stated disadvantaged populations categories.  This shows that PM2.5 air pollution disproportionately effects disadvantaged populations in the St. Louis metro area.
+
+Ozone levels in St. Louis are also an issue.  Ozone (O3) is an airborne pollutant with significant health impacts (EPA, https://www.epa.gov/ground-level-ozone-pollution/ground-level-ozone-basics).  As shown in figure 2 (the ozone map), areas with high ozone levels ("high" here is defined as above the 90th percentile nationwide) overlap significantly with areas matching at least one of the previously stated disadvantaged populations categories.  While not as strong of a relationship as the PM2.5, it is clear here that disadvantaged communities are still disproportionately affected by ozone air pollution in the St. Louis metro area.
+
+## Data Citations
+Data source: EJScreen (https://pedp-ejscreen.azurewebsites.net)
